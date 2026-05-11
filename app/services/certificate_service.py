@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from app.models.certificate import Host, Certificate, CertificateSAN, TLSDetail, CertificateChain, SecurityCheck, CertificateScan
+from app.models import Host, Certificate, CertificateSAN, TLSDetail, CertificateChain, SecurityCheck, CertificateScan
 from app.services.cert_utils import get_cert_info, parse_host
 from datetime import datetime
 
