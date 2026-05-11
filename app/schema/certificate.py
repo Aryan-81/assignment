@@ -1,8 +1,17 @@
+from sqlalchemy.sql.base import Options
 from datetime import datetime
 from typing import List, Optional, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
+from fastapi import Query
+
+class CertificateRequest(BaseModel):
+    url: str
+
+class PaginationParams(BaseModel):
+    page: int = Query(1, ge=1, description="Page number")
+    page_size: int = Query(10, ge=1, le=100, description="Items per page")
 
 # =========================================================
 # HOST
@@ -19,9 +28,12 @@ class HostCreate(HostBase):
 class HostResponse(HostBase):
     id: int
     created_at: datetime
+    
+
+    last_scan_at: Optional[datetime] = None
+    last_scan_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
-
 
 # =========================================================
 # CERTIFICATE SAN
@@ -138,9 +150,6 @@ class CertificateBase(BaseModel):
 
     days_left: Optional[int] = None
 
-    # Fingerprints
-    fingerprint_sha256: Optional[str] = None
-    fingerprint_sha1: Optional[str] = None
 
 
 class CertificateCreate(CertificateBase):
@@ -172,8 +181,6 @@ class CertificateUpdate(BaseModel):
 
     days_left: Optional[int] = None
 
-    fingerprint_sha256: Optional[str] = None
-    fingerprint_sha1: Optional[str] = None
 
 
 class CertificateResponse(CertificateBase):
@@ -181,7 +188,6 @@ class CertificateResponse(CertificateBase):
     id: int
 
     created_at: datetime
-    updated_at: datetime
 
     sans: List[CertificateSANResponse] = Field(default_factory=list)
 
@@ -220,8 +226,16 @@ class CertificateScanResponse(CertificateScanBase):
 # =========================================================
 # HOST WITH CERTIFICATES
 # =========================================================
-class HostWithCertificatesResponse(HostResponse):
+class HostWithCertificatesResponse(BaseModel):
 
-    certificates: List[CertificateResponse] = Field(default_factory=list)
+    success: bool = True
+
+    cached: Optional[bool] = None
+
+    error: Optional[str] = None
+
+    host: Optional[HostResponse] = None
+
+    certificate: Optional[CertificateResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
