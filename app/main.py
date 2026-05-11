@@ -1,21 +1,17 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
-
+from app.api.endpoints import certificate
 from app.core.database import Base, engine
 
-app = FastAPI()
+app = FastAPI(title="SSL Certificate Checker")
 
+# Include Routers
+app.include_router(certificate.router)
 
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
 
 
-class User(BaseModel):
-    name: str
-    age: int
-
-
 @app.get("/")
 def home():
-    return {"status": "running"}
+    return {"status": "running", "message": "SSL Certificate Checker API"}
