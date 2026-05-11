@@ -1,104 +1,123 @@
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from app.models import Host, Certificate, CertificateSAN, TLSDetail, CertificateChain, SecurityCheck, CertificateScan
-from app.services.cert_utils import get_cert_info, parse_host
-from datetime import datetime
+
+from app.models import (
+    Host,
+    CertificateScan,
+)
+
+from app.utils.cert_utils import get_cert_info, map_cert_data_to_models
+from app.utils.helper import is_cache_valid, parse_host
+from app.query_repo import QueryRepository as Repo
 
 
-def get_or_create_certificate(db: Session, url: str):
+def get_or_create_certificate(db: Session, url: str, port: int = 443):
     hostname = parse_host(url)
-    port = 443  # Default
+    if not hostname:
+        return {"success": False, "error": "Invalid hostname"}
 
-    # 1. Check if host exists
-    host = db.query(Host).filter(Host.hostname == hostname, Host.port == port).first()
-    
-    if host and host.certificates:
-        # Return existing host if it already has certificates
-        return host
+    # 1. Check Cache
+    host = Repo.get_host(db, hostname, port)
+    if host and host.last_scan_status == "success" and is_cache_valid(host.last_scan_at):
+        return {
+            "success": True, 
+            "cached": True, 
+            "host": host, 
+            "certificate": Repo.get_latest_scan_result(db, host.id)
+        }
 
-    # 2. Fetch fresh data
-    print(f"\n\nScanning Network for host: {hostname}\n\n")
-    cert_data = get_cert_info(hostname, port)
-    cert_info = cert_data["certificate"]
-    serial_number = cert_info["serial_number"]
-
-    # 3. Handle Host creation
+    # 2. Ensure Host exists
     if not host:
         host = Host(hostname=hostname, port=port)
         db.add(host)
         db.flush()
 
-    # 4. Check for existing certificate by serial number (Deduplication)
-    db_cert = db.query(Certificate).filter(Certificate.serial_number == serial_number).first()
-    
+    # 3. Perform Network Scan
+    try:
+        cert_data = get_cert_info(hostname, port)
+    except Exception as e:
+        host.last_scan_status = "failed"
+        db.commit()
+        return {"success": False, "error": str(e), "host": host}
+
+    # 4. Process Certificate
+    serial_no = cert_data["certificate"]["serial_number"]
+    db_cert = Repo.get_certificate_by_serial(db, serial_no)
+
     if not db_cert:
-        validity = cert_info["validity"]
-        # Create new Certificate entry if it doesn't exist
-        db_cert = Certificate(
-            serial_number=serial_number,
-            subject_common_name=cert_info["subject"]["common_name"],
-            subject_organization=cert_info["subject"]["organization"],
-            subject_country=cert_info["subject"]["country"],
-            issuer_common_name=cert_info["issuer"]["common_name"],
-            issuer_organization=cert_info["issuer"]["organization"],
-            issuer_country=cert_info["issuer"]["country"],
-            not_before=datetime.fromisoformat(validity["not_before"]),
-            not_after=datetime.fromisoformat(validity["not_after"]),
-            days_left=validity["days_left"]
-        )
+        db_cert = map_cert_data_to_models(cert_data)
         db.add(db_cert)
         db.flush()
 
-        # Create SANs
-        for san_val in cert_info["subject_alt_names"]:
-            db.add(CertificateSAN(certificate_id=db_cert.id, san_value=san_val))
-
-        # Create TLS Details
-        tls_info = cert_data["tls"]
-        db.add(TLSDetail(
-            certificate_id=db_cert.id,
-            tls_version=tls_info["version"],
-            cipher_suite=tls_info["cipher_suite"],
-            cipher_protocol=tls_info["cipher_protocol"],
-            secret_bits=tls_info["secret_bits"]
-        ))
-
-        # Create Certificate Chain
-        chain_list = cert_data["certificate_chain"]["certificate_chain"]
-        for entry in chain_list:
-            db.add(CertificateChain(
-                certificate_id=db_cert.id,
-                chain_position=entry["position"],
-                serial_number=entry["serial_number"],
-                subject_common_name=entry["subject"]["common_name"],
-                subject_organization=entry["subject"]["organization"],
-                subject_country=entry["subject"]["country"],
-                issuer_common_name=entry["issuer"]["common_name"],
-                issuer_organization=entry["issuer"]["organization"],
-                issuer_country=entry["issuer"]["country"],
-                not_before=datetime.fromisoformat(entry["not_before"]),
-                not_after=datetime.fromisoformat(entry["not_after"]),
-                days_left=entry["days_left"]
-            ))
-
-        # Create Security Checks
-        sec_info = cert_data["security_checks"]
-        db.add(SecurityCheck(
-            certificate_id=db_cert.id,
-            is_expired=sec_info["is_expired"],
-            expires_soon=sec_info["expires_soon"],
-            strong_tls=sec_info["strong_tls"]
-        ))
-
-    # 5. Create a Scan record (linking the host and certificate)
-    scan = CertificateScan(
-        host_id=host.id,
-        certificate_id=db_cert.id,
-        raw_json=cert_data
-    )
-    db.add(scan)
-
+    # 5. Finalize Scan Entry
+    host.last_scan_at = datetime.now(timezone.utc)
+    host.last_scan_status = "success"
+    
+    scan_entry = CertificateScan(host_id=host.id, certificate_id=db_cert.id, raw_json=cert_data)
+    db.add(scan_entry)
+    
     db.commit()
     db.refresh(host)
+
+    return {"success": True, "cached": False, "host": host, "certificate": db_cert}
+
+def get_certificate_no_cache(db: Session, url: str, port: int = 443):
+    hostname = parse_host(url)
+    if not hostname:
+        return {"success": False, "error": "Invalid hostname"}
+
+    # 2. Ensure Host exists
+    host = Repo.get_host(db, hostname, port)
+    if not host:
+        host = Host(hostname=hostname, port=port)
+        db.add(host)
+        db.flush()
+
+    # 3. Perform Network Scan
+    try:
+        cert_data = get_cert_info(hostname, port)
+    except Exception as e:
+        host.last_scan_status = "failed"
+        db.commit()
+        return {"success": False, "error": str(e), "host": host}
+
+    # 4. Process Certificate
+    serial_no = cert_data["certificate"]["serial_number"]
+    db_cert = Repo.get_certificate_by_serial(db, serial_no)
+
+    if not db_cert:
+        db_cert = map_cert_data_to_models(cert_data)
+        db.add(db_cert)
+        db.flush()
+
+    # 5. Finalize Scan Entry
+    host.last_scan_at = datetime.now(timezone.utc)
+    host.last_scan_status = "success"
     
-    return host
+    existing_scan = Repo.get_scan_by_host_and_certificate(
+        db,
+        host.id,
+        db_cert.id,
+    )
+
+    if existing_scan:
+
+        existing_scan.raw_json = cert_data
+        existing_scan.scanned_at = datetime.now(
+            timezone.utc
+        )
+
+    else:
+
+        scan_entry = CertificateScan(
+            host_id=host.id,
+            certificate_id=db_cert.id,
+            raw_json=cert_data,
+        )
+
+        db.add(scan_entry)
+    
+    db.commit()
+    db.refresh(host)
+
+    return {"success": True, "cached": False, "host": host, "certificate": db_cert}
