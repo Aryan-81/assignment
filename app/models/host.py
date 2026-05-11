@@ -20,6 +20,13 @@ class Host(Base):
         server_default=func.now(),
     )
 
+    last_scan_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    last_scan_status = Column(String(255), default="failed")
+
     __table_args__ = (
         UniqueConstraint(
             "hostname",

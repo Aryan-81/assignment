@@ -21,16 +21,6 @@ class Certificate(Base):
     # serials are NOT globally unique
     serial_number = Column(Text, nullable=False)
 
-    # best dedupe field
-    fingerprint_sha256 = Column(
-        Text,
-        unique=True,
-        nullable=False,
-        index=True,
-    )
-
-    fingerprint_sha1 = Column(Text)
-
     # Subject
     subject_common_name = Column(Text)
     subject_organization = Column(Text)
@@ -57,12 +47,6 @@ class Certificate(Base):
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
-    )
-
-    updated_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
     )
 
 
