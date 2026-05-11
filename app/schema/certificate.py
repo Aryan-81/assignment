@@ -1,11 +1,12 @@
-
 from datetime import datetime
 from typing import List, Optional, Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
+# =========================================================
 # HOST
+# =========================================================
 class HostBase(BaseModel):
     hostname: str
     port: int = 443
@@ -22,7 +23,9 @@ class HostResponse(HostBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# =========================================================
 # CERTIFICATE SAN
+# =========================================================
 class CertificateSANBase(BaseModel):
     san_value: str
 
@@ -37,7 +40,9 @@ class CertificateSANResponse(CertificateSANBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# =========================================================
 # TLS DETAILS
+# =========================================================
 class TLSDetailBase(BaseModel):
     tls_version: Optional[str] = None
     cipher_suite: Optional[str] = None
@@ -55,8 +60,11 @@ class TLSDetailResponse(TLSDetailBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# =========================================================
 # CERTIFICATE CHAIN
+# =========================================================
 class CertificateChainBase(BaseModel):
+
     chain_position: int
 
     serial_number: Optional[str] = None
@@ -87,7 +95,9 @@ class CertificateChainResponse(CertificateChainBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# =========================================================
 # SECURITY CHECKS
+# =========================================================
 class SecurityCheckBase(BaseModel):
     is_expired: bool = False
     expires_soon: bool = False
@@ -105,8 +115,11 @@ class SecurityCheckResponse(SecurityCheckBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# =========================================================
 # CERTIFICATE
+# =========================================================
 class CertificateBase(BaseModel):
+
     serial_number: str
 
     # Subject
@@ -119,28 +132,33 @@ class CertificateBase(BaseModel):
     issuer_organization: Optional[str] = None
     issuer_country: Optional[str] = None
 
+    # Validity
     not_before: datetime
     not_after: datetime
 
     days_left: Optional[int] = None
 
+    # Fingerprints
     fingerprint_sha256: Optional[str] = None
     fingerprint_sha1: Optional[str] = None
 
 
 class CertificateCreate(CertificateBase):
-    host_id: int
 
-    sans: List[CertificateSANCreate] = []
+    # REMOVED host_id
+    # many-to-many now handled via CertificateScan
+
+    sans: List[CertificateSANCreate] = Field(default_factory=list)
 
     tls_detail: Optional[TLSDetailCreate] = None
 
-    chain_entries: List[CertificateChainCreate] = []
+    chain_entries: List[CertificateChainCreate] = Field(default_factory=list)
 
     security_check: Optional[SecurityCheckCreate] = None
 
 
 class CertificateUpdate(BaseModel):
+
     subject_common_name: Optional[str] = None
     subject_organization: Optional[str] = None
     subject_country: Optional[str] = None
@@ -159,27 +177,31 @@ class CertificateUpdate(BaseModel):
 
 
 class CertificateResponse(CertificateBase):
+
     id: int
-    host_id: int
 
     created_at: datetime
     updated_at: datetime
 
-    sans: List[CertificateSANResponse] = []
+    sans: List[CertificateSANResponse] = Field(default_factory=list)
 
     tls_detail: Optional[TLSDetailResponse] = None
 
-    chain_entries: List[CertificateChainResponse] = []
+    chain_entries: List[CertificateChainResponse] = Field(default_factory=list)
 
     security_check: Optional[SecurityCheckResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
+# =========================================================
 # CERTIFICATE SCAN
+# =========================================================
 class CertificateScanBase(BaseModel):
+
     host_id: int
     certificate_id: int
+
     raw_json: Optional[Any] = None
 
 
@@ -188,14 +210,18 @@ class CertificateScanCreate(CertificateScanBase):
 
 
 class CertificateScanResponse(CertificateScanBase):
+
     id: int
     scanned_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-# FULL HOST RESPONSE
+# =========================================================
+# HOST WITH CERTIFICATES
+# =========================================================
 class HostWithCertificatesResponse(HostResponse):
-    certificates: List[CertificateResponse] = []
+
+    certificates: List[CertificateResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
