@@ -1,6 +1,7 @@
 import socket
 import ssl
 import json
+from OpenSSL import SSL
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -14,6 +15,79 @@ def parse_host(url_or_domain: str):
 
     parsed = urlparse(url_or_domain)
     return parsed.hostname
+
+def cert_name_to_dict(name):
+    result = {}
+
+    for k, v in name.get_components():
+        result[k.decode()] = v.decode()
+
+    return result
+
+def get_cert_chain(hostname, port=443):
+
+    ctx = SSL.Context(SSL.TLS_CLIENT_METHOD)
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((hostname, port))
+
+    conn = SSL.Connection(ctx, sock)
+    conn.set_tlsext_host_name(hostname.encode())
+    conn.set_connect_state()
+    conn.do_handshake()
+
+    chain = conn.get_peer_cert_chain()
+
+    tls_version = conn.get_protocol_version_name()
+    cipher = conn.get_cipher_name()
+
+    certs = []
+
+    now = datetime.now(timezone.utc)
+
+    for index, cert in enumerate(chain):
+
+        crypto_cert = cert.to_cryptography()
+
+        subject = cert_name_to_dict(cert.get_subject())
+        issuer = cert_name_to_dict(cert.get_issuer())
+
+        not_before = crypto_cert.not_valid_before_utc
+        not_after = crypto_cert.not_valid_after_utc
+
+        cert_data = {
+            "position": index,
+            "subject": {
+                "common_name": subject.get("CN"),
+                "organization": subject.get("O"),
+                "country": subject.get("C"),
+            },
+            "issuer": {
+                "common_name": issuer.get("CN"),
+                "organization": issuer.get("O"),
+                "country": issuer.get("C"),
+            },
+            "serial_number": str(cert.get_serial_number()),
+            "not_before": not_before.isoformat(),
+            "not_after": not_after.isoformat(),
+            "days_left": (not_after - now).days,
+        }
+
+        certs.append(cert_data)
+
+    result = {
+        "host": hostname,
+        "tls": {
+            "version": tls_version,
+            "cipher_suite": cipher,
+        },
+        "certificate_chain": certs,
+    }
+
+    conn.close()
+    sock.close()
+
+    return result
 
 
 def get_cert_info(hostname: str, port: int = 443):
@@ -64,40 +138,9 @@ def get_cert_info(hostname: str, port: int = 443):
             san = cert.get("subjectAltName", [])
 
             # CA chain (best effort)
-            chain_info = []
+            chain_info = get_cert_chain(hostname,port)
 
-            if hasattr(ssock, "get_verified_chain"):
-                try:
-                    chain = ssock.get_verified_chain()
-
-                    for idx, cert_obj in enumerate(chain):
-                        try:
-                            subject_data = cert_obj.get_subject()
-                            issuer_data = cert_obj.get_issuer()
-
-                            chain_info.append({
-                                "position": idx,
-                                "subject_common_name": getattr(
-                                    subject_data, "CN", None
-                                ),
-                                "subject_organization": getattr(
-                                    subject_data, "O", None
-                                ),
-                                "issuer_common_name": getattr(
-                                    issuer_data, "CN", None
-                                ),
-                                "issuer_organization": getattr(
-                                    issuer_data, "O", None
-                                ),
-                            })
-                        except Exception as e:
-                            chain_info.append({
-                                "position": idx,
-                                "error": str(e)
-                            })
-
-                except Exception:
-                    pass
+            
 
             result = {
                 "host": hostname,
