@@ -60,18 +60,40 @@ Strict API contracts are enforced using Pydantic models.
 
 ```text
 ├── app/
-│   ├── api/          # FastAPI Route Handlers
-│   ├── core/         # Database configuration and core settings
-│   ├── models/       # SQLAlchemy ORM Models
-│   ├── schema/       # Pydantic Validation Schemas
-│   ├── services/     # Business logic and orchestration
-│   ├── utils/        # Certificate parsing and helper functions
-│   ├── query_repo.py # Centralized data access layer
-│   └── main.py       # Application entry point
+│   ├── ...
 ├── alembic/          # Database migration scripts
+├── tests/            # Unit and Integration test suites
 ├── scripts/          # Automation and utility scripts
 ├── Dockerfile        # Containerization configuration
-└── docker-compose.yml# Multi-container orchestration (App + PostgreSQL)
+├── docker-compose.yml# Multi-container orchestration (App + PostgreSQL)
+├── docker-compose.test.yml # Automated testing environment
+└── .env              # Environment variables configuration
+```
+
+## 🧪 Testing
+
+The system includes a robust testing suite covering both core logic and database integrations.
+
+### 1. Automated Testing (Docker - Recommended)
+The easiest way to run the full test suite (Unit + Integration) in a clean environment:
+```bash
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+```
+This command spins up a fresh PostgreSQL instance, waits for it to be healthy, runs all tests, and then shuts down automatically.
+
+### 2. Manual Testing (Local)
+To run tests locally, ensure your environment is set up and execute:
+
+**Unit Tests (No DB required):**
+```bash
+PYTHONPATH=. pytest tests/test_utils.py
+```
+
+**Integration Tests (Requires PostgreSQL):**
+1. Create a test database: `CREATE DATABASE ssl_checker_test;`
+2. Run tests:
+```bash
+PYTHONPATH=. pytest tests/test_integration.py
 ```
 
 ## 🛠️ Tech Stack
@@ -81,6 +103,7 @@ Strict API contracts are enforced using Pydantic models.
 - **Validation**: [Pydantic v2](https://docs.pydantic.dev/)
 - **Database**: [PostgreSQL](https://www.postgresql.org/)
 - **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
+- **Testing**: [Pytest](https://docs.pytest.org/)
 - **Tooling**: [Docker](https://www.docker.com/), [OpenSSL](https://www.openssl.org/) (for cert extraction)
 
 ## 🚦 Getting Started
