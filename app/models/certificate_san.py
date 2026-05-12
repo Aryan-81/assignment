@@ -7,7 +7,7 @@ from app.core.database import Base
 
 
 class CertificateSAN(Base):
-    """Subject Alternative Name (SAN) entries associated with an SSL/TLS certificate."""
+    """Subject Alternative Name (SAN) entries associated with an SSL certificate."""
     __tablename__ = "certificate_sans"
 
     id = Column(Integer, primary_key=True, index=True)

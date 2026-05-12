@@ -84,7 +84,6 @@ This command spins up a fresh PostgreSQL instance, waits for it to be healthy, r
 ### 2. Manual Testing (Local)
 To run tests locally, ensure your environment is set up and execute:
 
-**Unit Tests (No DB required):**
 ```bash
 PYTHONPATH=. pytest tests/test_utils.py
 ```
@@ -95,6 +94,8 @@ PYTHONPATH=. pytest tests/test_utils.py
 ```bash
 PYTHONPATH=. pytest tests/test_integration.py
 ```
+
+_Requires the database to be running on the specified port._
 
 ## 🛠️ Tech Stack
 
@@ -113,7 +114,7 @@ PYTHONPATH=. pytest tests/test_integration.py
 1. Clone the repository.
 2. Build and run:
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 3. Access the API at `http://localhost:8000`.
 4. Interactive Docs: `http://localhost:8000/docs`.
