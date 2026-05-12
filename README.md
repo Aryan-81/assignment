@@ -1,6 +1,6 @@
-# SSL Certificate Monitoring System
+# SSL Certificate Expiry Checker
 
-FastAPI-powered backend service for scanning, monitoring, and managing SSL certificates. This application provides detailed insights into certificate chains, TLS versions, cipher suites, and security health for target domains.
+FastAPI-powered backend service for scanning, monitoring, and managing SSL certificates and check expiry of SSL certificate for target domains.
 
 ## 🚀 Key Features
 
@@ -75,26 +75,33 @@ Strict API contracts are enforced using Pydantic models.
 The system includes a robust testing suite covering both core logic and database integrations.
 
 ### 1. Automated Testing (Docker - Recommended)
+
 The easiest way to run the full test suite (Unit + Integration) in a clean environment:
+
 ```bash
 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 ```
+
 This command spins up a fresh PostgreSQL instance, waits for it to be healthy, runs all tests, and then shuts down automatically.
 
 ### 2. Manual Testing (Local)
+
 To run tests locally, ensure your environment is set up and execute:
 
-**Unit Tests (No DB required):**
 ```bash
 PYTHONPATH=. pytest tests/test_utils.py
 ```
 
 **Integration Tests (Requires PostgreSQL):**
+
 1. Create a test database: `CREATE DATABASE ssl_checker_test;`
 2. Run tests:
+
 ```bash
 PYTHONPATH=. pytest tests/test_integration.py
 ```
+
+_Requires the database to be running on the specified port._
 
 ## 🛠️ Tech Stack
 
@@ -113,7 +120,7 @@ PYTHONPATH=. pytest tests/test_integration.py
 1. Clone the repository.
 2. Build and run:
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 3. Access the API at `http://localhost:8000`.
 4. Interactive Docs: `http://localhost:8000/docs`.

@@ -43,7 +43,7 @@ def create_application() -> FastAPI:
     """
     app = FastAPI(
         title=settings.APP_NAME,
-        description="API for checking and monitoring SSL/TLS certificates",
+        description="API for checking expiry of SSL certificate",
         version=settings.APP_VERSION,
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,
