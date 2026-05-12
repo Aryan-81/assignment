@@ -7,3 +7,5 @@ pydantic-settings
 alembic
 pyOpenSSL
 cryptography
+pytest
+pytest-anyio
