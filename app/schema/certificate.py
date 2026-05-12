@@ -1,4 +1,3 @@
-from sqlalchemy.sql.base import Options
 from datetime import datetime
 from typing import List, Optional, Any
 
@@ -8,6 +7,7 @@ from fastapi import Query
 
 class CertificateRequest(BaseModel):
     url: str
+    include_sans: bool = False
 
 class PaginationParams(BaseModel):
     page: int = Query(1, ge=1, description="Page number")
@@ -184,20 +184,19 @@ class CertificateUpdate(BaseModel):
 
 
 class CertificateResponse(CertificateBase):
-
     id: int
-
     created_at: datetime
 
-    sans: List[CertificateSANResponse] = Field(default_factory=list)
-
     tls_detail: Optional[TLSDetailResponse] = None
-
     chain_entries: List[CertificateChainResponse] = Field(default_factory=list)
-
     security_check: Optional[SecurityCheckResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CertificateFullResponse(CertificateResponse):
+    sans: Optional[List[CertificateSANResponse]] = None
+
 
 
 # =========================================================
@@ -227,15 +226,13 @@ class CertificateScanResponse(CertificateScanBase):
 # HOST WITH CERTIFICATES
 # =========================================================
 class HostWithCertificatesResponse(BaseModel):
-
     success: bool = True
-
     cached: Optional[bool] = None
-
     error: Optional[str] = None
-
     host: Optional[HostResponse] = None
-
     certificate: Optional[CertificateResponse] = None
-
     model_config = ConfigDict(from_attributes=True)
+
+
+class HostWithCertificatesFullResponse(HostWithCertificatesResponse):
+    certificate: Optional[CertificateFullResponse] = None
