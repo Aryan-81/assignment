@@ -8,6 +8,7 @@ from app.models import (
 
 from app.utils.cert_utils import get_cert_info, map_cert_data_to_models
 from app.utils.helper import is_cache_valid, parse_host
+from app.utils.error_handler import handle_scan_error, format_error_response, format_success_response
 from app.query_repo import QueryRepository as Repo
 
 
@@ -19,12 +20,11 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
     # 1. Check Cache
     host = Repo.get_host(db, hostname, port)
     if host and host.last_scan_status == "success" and is_cache_valid(host.last_scan_at):
-        return {
-            "success": True, 
-            "cached": True, 
-            "host": host, 
-            "certificate": Repo.get_latest_scan_result(db, host.id)
-        }
+        return format_success_response(
+            host=host, 
+            certificate=Repo.get_latest_scan_result(db, host.id), 
+            cached=True
+        )
 
     # 2. Ensure Host exists
     if not host:
@@ -36,9 +36,11 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
     try:
         cert_data = get_cert_info(hostname, port)
     except Exception as e:
-        host.last_scan_status = "failed"
+        success, error_msg = handle_scan_error(e)
+        # Remove host from DB on failure as requested
+        db.delete(host)
         db.commit()
-        return {"success": False, "error": str(e), "host": host}
+        return format_error_response(error_msg, None)
 
     # 4. Process Certificate
     serial_no = cert_data["certificate"]["serial_number"]
@@ -59,7 +61,7 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
     db.commit()
     db.refresh(host)
 
-    return {"success": True, "cached": False, "host": host, "certificate": db_cert}
+    return format_success_response(host=host, certificate=db_cert, cached=False)
 
 def get_certificate_no_cache(db: Session, url: str, port: int = 443):
     hostname = parse_host(url)
@@ -77,9 +79,11 @@ def get_certificate_no_cache(db: Session, url: str, port: int = 443):
     try:
         cert_data = get_cert_info(hostname, port)
     except Exception as e:
-        host.last_scan_status = "failed"
+        success, error_msg = handle_scan_error(e)
+        # Remove host from DB on failure as requested
+        db.delete(host)
         db.commit()
-        return {"success": False, "error": str(e), "host": host}
+        return format_error_response(error_msg, None)
 
     # 4. Process Certificate
     serial_no = cert_data["certificate"]["serial_number"]
@@ -120,4 +124,4 @@ def get_certificate_no_cache(db: Session, url: str, port: int = 443):
     db.commit()
     db.refresh(host)
 
-    return {"success": True, "cached": False, "host": host, "certificate": db_cert}
+    return format_success_response(host=host, certificate=db_cert, cached=False)

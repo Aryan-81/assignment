@@ -18,6 +18,31 @@ class QueryRepository:
         scan = db.query(CertificateScan).filter(CertificateScan.host_id == host_id)\
                  .order_by(CertificateScan.scanned_at.desc()).first()
         return scan.certificate if scan else None
+
+    @staticmethod
+    def get_latest_scans_for_hosts(db: Session, host_ids: List[int]) -> List[CertificateScan]:
+        from sqlalchemy import func
+        # Subquery to get the latest scanned_at for each host
+        subquery = (
+            db.query(
+                CertificateScan.host_id,
+                func.max(CertificateScan.scanned_at).label("latest_scanned_at")
+            )
+            .filter(CertificateScan.host_id.in_(host_ids))
+            .group_by(CertificateScan.host_id)
+            .subquery()
+        )
+
+        # Join to get the full scan objects for those latest times
+        return (
+            db.query(CertificateScan)
+            .join(
+                subquery,
+                (CertificateScan.host_id == subquery.c.host_id) &
+                (CertificateScan.scanned_at == subquery.c.latest_scanned_at)
+            )
+            .all()
+        )
     @staticmethod
     def get_scan_by_host_and_certificate(
         db: Session,

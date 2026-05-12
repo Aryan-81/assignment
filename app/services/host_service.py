@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.query_repo import QueryRepository as repo
-from app.utils.helper import cleanup_orphan_certificates
-from app.schema.certificate import HostWithCertificatesResponse
+from app.utils.helper import cleanup_orphan_certificates, is_cache_valid
+from app.utils.error_handler import format_success_response
 from app.services.certificate_service import get_or_create_certificate
 
 def get_paginated_hosts_with_latest_scan(db: Session, page: int, page_size: int):
@@ -13,18 +13,31 @@ def get_paginated_hosts_with_latest_scan(db: Session, page: int, page_size: int)
         return []
 
     host_ids = [host.id for host in hosts]
-    latest_scans = repo.get_latest_scan_result(db, host_ids)
-
-    # 2. Map results
+    latest_scans = repo.get_latest_scans_for_hosts(db, host_ids)
     certificate_map = {scan.host_id: scan.certificate for scan in latest_scans}
 
-    return [
-        HostWithCertificatesResponse(
-            success=True,
+    # 2. Validate cache and rescan if necessary
+    results = []
+    for host in hosts:
+        if not is_cache_valid(host.last_scan_at):
+            # Trigger rescan if cache is invalid
+            scan_data = get_or_create_certificate(db, host.hostname, host.port)
+            if scan_data["success"]:
+                results.append(format_success_response(
+                    host=scan_data["host"],
+                    certificate=scan_data["certificate"],
+                    cached=False
+                ))
+                continue
+        
+        # Use cached data if valid or if rescan failed (fallback)
+        results.append(format_success_response(
             host=host,
-            certificate=certificate_map.get(host.id)
-        ) for host in hosts
-    ]
+            certificate=certificate_map.get(host.id),
+            cached=True
+        ))
+
+    return results
 
 def delete_host_and_orphans(db: Session, hostname: str) -> bool:
     host = repo.get_host(db, hostname)
@@ -44,8 +57,8 @@ def delete_host_and_orphans(db: Session, hostname: str) -> bool:
 def get_host_or_create(db: Session, hostname: str):
     host = repo.get_host(db, hostname)
 
-    if not host:
-        # Business logic: trigger a new scan if host doesn't exist
+    if not host or not is_cache_valid(host.last_scan_at):
+        # Business logic: trigger a new scan if host doesn't exist or cache is invalid
         data = get_or_create_certificate(db, hostname)
         if data["success"]:
             host = data["host"]
