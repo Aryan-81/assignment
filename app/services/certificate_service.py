@@ -50,7 +50,11 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
     if not db_cert:
         db_cert = map_cert_data_to_models(cert_data)
         db.add(db_cert)
-        db.flush()
+    else:
+        # Update existing certificate with missing details (like chain entries)
+        db_cert = map_cert_data_to_models(cert_data, cert=db_cert)
+    
+    db.flush()
 
     # Finalize Scan Entry
     host.last_scan_at = datetime.now(timezone.utc)
@@ -94,7 +98,11 @@ def get_certificate_no_cache(db: Session, url: str, port: int = 443):
     if not db_cert:
         db_cert = map_cert_data_to_models(cert_data)
         db.add(db_cert)
-        db.flush()
+    else:
+        # Update existing certificate with missing details (like chain entries)
+        db_cert = map_cert_data_to_models(cert_data, cert=db_cert)
+    
+    db.flush()
 
     # Finalize Scan Entry
     host.last_scan_at = datetime.now(timezone.utc)
