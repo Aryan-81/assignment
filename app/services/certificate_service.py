@@ -13,11 +13,12 @@ from app.query_repo import QueryRepository as Repo
 
 
 def get_or_create_certificate(db: Session, url: str, port: int = 443):
+    """Retrieve certificate from cache if valid, otherwise perform a network scan."""
     hostname = parse_host(url)
     if not hostname:
         return {"success": False, "error": "Invalid hostname"}
 
-    # 1. Check Cache
+    # Check Cache
     host = Repo.get_host(db, hostname, port)
     if host and host.last_scan_status == "success" and is_cache_valid(host.last_scan_at):
         return format_success_response(
@@ -26,13 +27,13 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
             cached=True
         )
 
-    # 2. Ensure Host exists
+    # Ensure Host exists
     if not host:
         host = Host(hostname=hostname, port=port)
         db.add(host)
         db.flush()
 
-    # 3. Perform Network Scan
+    # Perform Network Scan
     try:
         cert_data = get_cert_info(hostname, port)
     except Exception as e:
@@ -42,7 +43,7 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
         db.commit()
         return format_error_response(error_msg, None)
 
-    # 4. Process Certificate
+    # Process Certificate
     serial_no = cert_data["certificate"]["serial_number"]
     db_cert = Repo.get_certificate_by_serial(db, serial_no)
 
@@ -51,7 +52,7 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
         db.add(db_cert)
         db.flush()
 
-    # 5. Finalize Scan Entry
+    # Finalize Scan Entry
     host.last_scan_at = datetime.now(timezone.utc)
     host.last_scan_status = "success"
     
@@ -64,18 +65,19 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
     return format_success_response(host=host, certificate=db_cert, cached=False)
 
 def get_certificate_no_cache(db: Session, url: str, port: int = 443):
+    """Bypass cache and perform a fresh network scan for the certificate."""
     hostname = parse_host(url)
     if not hostname:
         return {"success": False, "error": "Invalid hostname"}
 
-    # 2. Ensure Host exists
+    # Ensure Host exists
     host = Repo.get_host(db, hostname, port)
     if not host:
         host = Host(hostname=hostname, port=port)
         db.add(host)
         db.flush()
 
-    # 3. Perform Network Scan
+    # Perform Network Scan
     try:
         cert_data = get_cert_info(hostname, port)
     except Exception as e:
@@ -85,7 +87,7 @@ def get_certificate_no_cache(db: Session, url: str, port: int = 443):
         db.commit()
         return format_error_response(error_msg, None)
 
-    # 4. Process Certificate
+    # Process Certificate
     serial_no = cert_data["certificate"]["serial_number"]
     db_cert = Repo.get_certificate_by_serial(db, serial_no)
 
@@ -94,7 +96,7 @@ def get_certificate_no_cache(db: Session, url: str, port: int = 443):
         db.add(db_cert)
         db.flush()
 
-    # 5. Finalize Scan Entry
+    # Finalize Scan Entry
     host.last_scan_at = datetime.now(timezone.utc)
     host.last_scan_status = "success"
     

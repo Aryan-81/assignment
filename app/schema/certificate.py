@@ -6,10 +6,12 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from fastapi import Query
 
 class CertificateRequest(BaseModel):
+    """Schema for certificate scan request."""
     url: str
     include_sans: bool = False
 
 class PaginationParams(BaseModel):
+    """Common pagination parameters."""
     page: int = Query(1, ge=1, description="Page number")
     page_size: int = Query(10, ge=1, le=100, description="Items per page")
 
@@ -17,15 +19,18 @@ class PaginationParams(BaseModel):
 # HOST
 # =========================================================
 class HostBase(BaseModel):
+    """Base properties for a host."""
     hostname: str
     port: int = 443
 
 
 class HostCreate(HostBase):
+    """Schema for creating a host."""
     pass
 
 
 class HostResponse(HostBase):
+    """Detailed host information for responses."""
     id: int
     created_at: datetime
     
@@ -39,14 +44,17 @@ class HostResponse(HostBase):
 # CERTIFICATE SAN
 # =========================================================
 class CertificateSANBase(BaseModel):
+    """Base properties for Subject Alternative Names."""
     san_value: str
 
 
 class CertificateSANCreate(CertificateSANBase):
+    """Schema for creating a SAN entry."""
     pass
 
 
 class CertificateSANResponse(CertificateSANBase):
+    """SAN information for responses."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -56,6 +64,7 @@ class CertificateSANResponse(CertificateSANBase):
 # TLS DETAILS
 # =========================================================
 class TLSDetailBase(BaseModel):
+    """Base properties for TLS connection details."""
     tls_version: Optional[str] = None
     cipher_suite: Optional[str] = None
     cipher_protocol: Optional[str] = None
@@ -63,10 +72,12 @@ class TLSDetailBase(BaseModel):
 
 
 class TLSDetailCreate(TLSDetailBase):
+    """Schema for creating TLS details."""
     pass
 
 
 class TLSDetailResponse(TLSDetailBase):
+    """TLS details for responses."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -76,6 +87,7 @@ class TLSDetailResponse(TLSDetailBase):
 # CERTIFICATE CHAIN
 # =========================================================
 class CertificateChainBase(BaseModel):
+    """Base properties for a certificate in a chain."""
 
     chain_position: int
 
@@ -98,10 +110,12 @@ class CertificateChainBase(BaseModel):
 
 
 class CertificateChainCreate(CertificateChainBase):
+    """Schema for creating a chain entry."""
     pass
 
 
 class CertificateChainResponse(CertificateChainBase):
+    """Chain entry information for responses."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -111,16 +125,19 @@ class CertificateChainResponse(CertificateChainBase):
 # SECURITY CHECKS
 # =========================================================
 class SecurityCheckBase(BaseModel):
+    """Base properties for security status flags."""
     is_expired: bool = False
     expires_soon: bool = False
     strong_tls: bool = False
 
 
 class SecurityCheckCreate(SecurityCheckBase):
+    """Schema for creating security check results."""
     pass
 
 
 class SecurityCheckResponse(SecurityCheckBase):
+    """Security check information for responses."""
     id: int
     checked_at: datetime
 
@@ -131,6 +148,7 @@ class SecurityCheckResponse(SecurityCheckBase):
 # CERTIFICATE
 # =========================================================
 class CertificateBase(BaseModel):
+    """Base properties for a certificate."""
 
     serial_number: str
 
@@ -153,6 +171,7 @@ class CertificateBase(BaseModel):
 
 
 class CertificateCreate(CertificateBase):
+    """Schema for creating a certificate with relations."""
 
     # REMOVED host_id
     # many-to-many now handled via CertificateScan
@@ -167,6 +186,7 @@ class CertificateCreate(CertificateBase):
 
 
 class CertificateUpdate(BaseModel):
+    """Schema for updating certificate fields."""
 
     subject_common_name: Optional[str] = None
     subject_organization: Optional[str] = None
@@ -184,6 +204,7 @@ class CertificateUpdate(BaseModel):
 
 
 class CertificateResponse(CertificateBase):
+    """Certificate information with related data."""
     id: int
     created_at: datetime
 
@@ -195,6 +216,7 @@ class CertificateResponse(CertificateBase):
 
 
 class CertificateFullResponse(CertificateResponse):
+    """Certificate information including SANs."""
     sans: Optional[List[CertificateSANResponse]] = None
 
 
@@ -203,6 +225,7 @@ class CertificateFullResponse(CertificateResponse):
 # CERTIFICATE SCAN
 # =========================================================
 class CertificateScanBase(BaseModel):
+    """Base properties for a scan record."""
 
     host_id: int
     certificate_id: int
@@ -211,10 +234,12 @@ class CertificateScanBase(BaseModel):
 
 
 class CertificateScanCreate(CertificateScanBase):
+    """Schema for creating a scan record."""
     pass
 
 
 class CertificateScanResponse(CertificateScanBase):
+    """Scan record information for responses."""
 
     id: int
     scanned_at: datetime
@@ -226,6 +251,7 @@ class CertificateScanResponse(CertificateScanBase):
 # HOST WITH CERTIFICATES
 # =========================================================
 class HostWithCertificatesResponse(BaseModel):
+    """Response containing host and its latest certificate."""
     success: bool = True
     cached: Optional[bool] = None
     error: Optional[str] = None
@@ -235,4 +261,5 @@ class HostWithCertificatesResponse(BaseModel):
 
 
 class HostWithCertificatesFullResponse(HostWithCertificatesResponse):
+    """Full response including certificate SANs."""
     certificate: Optional[CertificateFullResponse] = None

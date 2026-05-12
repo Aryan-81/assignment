@@ -8,6 +8,7 @@ from app.core.database import Base
 
 
 class SecurityCheck(Base):
+    """Stores evaluated security status flags (expiration, TLS strength) for a certificate."""
     __tablename__ = "security_checks"
 
     id = Column(Integer, primary_key=True, index=True)

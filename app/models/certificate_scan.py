@@ -9,6 +9,7 @@ from app.core.database import Base
 
 
 class CertificateScan(Base):
+    """Recorded scan event linking a host to a certificate at a specific point in time."""
     __tablename__ = "certificate_scans"
 
     id = Column(Integer, primary_key=True, index=True)

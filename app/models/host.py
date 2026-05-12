@@ -8,6 +8,7 @@ from app.core.database import Base
 
 
 class Host(Base):
+    """Represents a remote host (domain) being monitored for certificate status."""
     __tablename__ = "hosts"
 
     id = Column(Integer, primary_key=True, index=True)

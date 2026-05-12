@@ -1,3 +1,6 @@
+"""
+Application entry point and configuration for the FastAPI service.
+"""
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, status

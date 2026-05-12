@@ -1,3 +1,6 @@
+"""
+Database connection setup and session management using SQLAlchemy.
+"""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -26,8 +29,10 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-# Dependency to get the database session
 def get_db():
+    """
+    Dependency function to provide a database session to API endpoints.
+    """
     db = SessionLocal()
     try:
         yield db

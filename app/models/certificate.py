@@ -14,6 +14,7 @@ from app.core.database import Base
 
 
 class Certificate(Base):
+    """Stores core SSL certificate information extracted during a scan."""
     __tablename__ = "certificates"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -57,7 +58,7 @@ class Certificate(Base):
         cascade="all, delete-orphan",
     )
 
-    # many-to-many (read only)
+    # many-to-many
     hosts = relationship(
         "Host",
         secondary="certificate_scans",

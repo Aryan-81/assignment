@@ -5,9 +5,10 @@ from app.utils.error_handler import format_success_response
 from app.services.certificate_service import get_or_create_certificate
 
 def get_paginated_hosts_with_latest_scan(db: Session, page: int, page_size: int):
+    """Retrieve a list of hosts with their latest scan results, triggering rescans if cached data is stale."""
     offset = (page - 1) * page_size
     
-    # 1. Fetch data via Repo
+    # Fetch data via Repo
     hosts = repo.get_paginated_hosts(db, offset, page_size)
     if not hosts:
         return []
@@ -16,7 +17,7 @@ def get_paginated_hosts_with_latest_scan(db: Session, page: int, page_size: int)
     latest_scans = repo.get_latest_scans_for_hosts(db, host_ids)
     certificate_map = {scan.host_id: scan.certificate for scan in latest_scans}
 
-    # 2. Validate cache and rescan if necessary
+    # Validate cache and rescan if necessary
     results = []
     for host in hosts:
         if not is_cache_valid(host.last_scan_at):
@@ -40,11 +41,12 @@ def get_paginated_hosts_with_latest_scan(db: Session, page: int, page_size: int)
     return results
 
 def delete_host_and_orphans(db: Session, hostname: str) -> bool:
+    """Delete a host and its associated scans, then cleanup any certificates that are no longer referenced."""
     host = repo.get_host(db, hostname)
     if not host:
         return False
 
-    # Logic: Keep track of IDs before deletion
+    # Keep track of IDs before deletion
     certificate_ids = [s.certificate_id for s in host.scans if s.certificate_id]
     
     db.delete(host)
@@ -55,14 +57,16 @@ def delete_host_and_orphans(db: Session, hostname: str) -> bool:
     return True
 
 def get_host_or_create(db: Session, hostname: str):
+    """Fetch a host from the database or create it by performing an initial scan if it doesn't exist or is stale."""
     host = repo.get_host(db, hostname)
 
     if not host or not is_cache_valid(host.last_scan_at):
-        # Business logic: trigger a new scan if host doesn't exist or cache is invalid
+        # Trigger a new scan if host doesn't exist or cache is invalid
         data = get_or_create_certificate(db, hostname)
         if data["success"]:
             host = data["host"]
         else:
             # Handle or log error
             return None
+            
     return host

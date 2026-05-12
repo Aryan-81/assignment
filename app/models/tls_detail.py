@@ -7,6 +7,7 @@ from app.core.database import Base
 
 
 class TLSDetail(Base):
+    """Detailed TLS connection parameters (version, cipher) for a specific certificate scan."""
     __tablename__ = "tls_details"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -7,6 +7,7 @@ from app.core.database import Base
 
 
 class CertificateChain(Base):
+    """Model to represent entries in a certificate trust chain."""
     __tablename__ = "certificate_chain"
 
     id = Column(Integer, primary_key=True, index=True)
