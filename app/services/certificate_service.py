@@ -8,7 +8,7 @@ from app.models import (
 
 from app.utils.cert_utils import get_cert_info, map_cert_data_to_models
 from app.utils.helper import is_cache_valid, parse_host
-from app.utils.error_handler import handle_scan_error, format_error_response, format_success_response
+from app.utils.error_handler import handle_scan_error, format_success_response, ScanException
 from app.query_repo import QueryRepository as Repo
 
 
@@ -16,7 +16,7 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
     """Retrieve certificate from cache if valid, otherwise perform a network scan."""
     hostname = parse_host(url)
     if not hostname:
-        return {"success": False, "error": "Invalid hostname"}
+        raise ScanException("Invalid hostname")
 
     # Check Cache
     host = Repo.get_host(db, hostname, port)
@@ -37,11 +37,10 @@ def get_or_create_certificate(db: Session, url: str, port: int = 443):
     try:
         cert_data = get_cert_info(hostname, port)
     except Exception as e:
-        success, error_msg = handle_scan_error(e)
         # Remove host from DB on failure as requested
         db.delete(host)
         db.commit()
-        return format_error_response(error_msg, None)
+        handle_scan_error(e, raise_exc=True)
 
     # Process Certificate
     serial_no = cert_data["certificate"]["serial_number"]
@@ -72,7 +71,7 @@ def get_certificate_no_cache(db: Session, url: str, port: int = 443):
     """Bypass cache and perform a fresh network scan for the certificate."""
     hostname = parse_host(url)
     if not hostname:
-        return {"success": False, "error": "Invalid hostname"}
+        raise ScanException("Invalid hostname")
 
     # Ensure Host exists
     host = Repo.get_host(db, hostname, port)
@@ -85,11 +84,10 @@ def get_certificate_no_cache(db: Session, url: str, port: int = 443):
     try:
         cert_data = get_cert_info(hostname, port)
     except Exception as e:
-        success, error_msg = handle_scan_error(e)
         # Remove host from DB on failure as requested
         db.delete(host)
         db.commit()
-        return format_error_response(error_msg, None)
+        handle_scan_error(e, raise_exc=True)
 
     # Process Certificate
     serial_no = cert_data["certificate"]["serial_number"]

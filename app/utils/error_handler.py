@@ -1,31 +1,46 @@
-from typing import Any, Dict, Optional, Tuple
-import ssl
 import socket
+import ssl
+from typing import Any, Dict, Optional, Tuple
 
-def handle_scan_error(exc: Exception) -> Tuple[bool, str]:
+class ScanException(Exception):
+    """Custom exception for certificate scanning errors."""
+    def __init__(self, message: str, host: Optional[Any] = None):
+        self.message = message
+        self.host = host
+        super().__init__(self.message)
+
+def handle_scan_error(exc: Exception, raise_exc: bool = False) -> Tuple[bool, str]:
     """
     Uniformly handle errors during certificate scanning and return a success flag and error message.
+    If raise_exc is True, it raises ScanException instead of returning a tuple.
     """
+    error_msg = ""
     if isinstance(exc, socket.timeout):
-        return False, "Connection timed out. The host might be unreachable."
+        error_msg = "Connection timed out. The host might be unreachable."
     
-    if isinstance(exc, socket.gaierror):
-        return False, "DNS resolution failed. Please check the hostname."
+    elif isinstance(exc, socket.gaierror):
+        error_msg = "DNS resolution failed. Please check the hostname."
     
-    if isinstance(exc, ConnectionRefusedError):
-        return False, "Connection refused. The host might not be listening on the specified port."
+    elif isinstance(exc, ConnectionRefusedError):
+        error_msg = "Connection refused. The host might not be listening on the specified port."
     
-    if isinstance(exc, ssl.SSLCertVerificationError):
-        return False, f"SSL Certificate Verification failed: {exc.reason}"
+    elif isinstance(exc, ssl.SSLCertVerificationError):
+        error_msg = f"SSL Certificate Verification failed: {exc.reason}"
     
-    if isinstance(exc, ssl.SSLError):
-        return False, f"SSL Error: {str(exc)}"
+    elif isinstance(exc, ssl.SSLError):
+        error_msg = f"SSL Error: {str(exc)}"
     
-    if isinstance(exc, ValueError):
-        return False, str(exc)
+    elif isinstance(exc, ValueError):
+        error_msg = str(exc)
     
-    # Generic fallback
-    return False, f"An unexpected error occurred: {str(exc)}"
+    else:
+        # Generic fallback
+        error_msg = f"An unexpected error occurred: {str(exc)}"
+
+    if raise_exc:
+        raise ScanException(error_msg)
+    
+    return False, error_msg
 
 def format_error_response(error_msg: str, host: Optional[Any] = None) -> Dict[str, Any]:
     """

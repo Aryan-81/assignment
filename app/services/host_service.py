@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.query_repo import QueryRepository as repo
 from app.utils.helper import cleanup_orphan_certificates, is_cache_valid
-from app.utils.error_handler import format_success_response
+from app.utils.error_handler import format_success_response, ScanException
 from app.services.certificate_service import get_or_create_certificate
 
 def get_paginated_hosts_with_latest_scan(db: Session, page: int, page_size: int):
@@ -22,14 +22,13 @@ def get_paginated_hosts_with_latest_scan(db: Session, page: int, page_size: int)
     for host in hosts:
         if not is_cache_valid(host.last_scan_at):
             # Trigger rescan if cache is invalid
-            scan_data = get_or_create_certificate(db, host.hostname, host.port)
-            if scan_data["success"]:
-                results.append(format_success_response(
-                    host=scan_data["host"],
-                    certificate=scan_data["certificate"],
-                    cached=False
-                ))
+            try:
+                scan_data = get_or_create_certificate(db, host.hostname, host.port)
+                results.append(scan_data)
                 continue
+            except ScanException:
+                # Fallback to cached data if rescan fails during bulk fetch
+                pass
         
         # Use cached data if valid or if rescan failed (fallback)
         results.append(format_success_response(
@@ -62,10 +61,10 @@ def get_host_or_create(db: Session, hostname: str):
 
     if not host or not is_cache_valid(host.last_scan_at):
         # Trigger a new scan if host doesn't exist or cache is invalid
-        data = get_or_create_certificate(db, hostname)
-        if data["success"]:
+        try:
+            data = get_or_create_certificate(db, hostname)
             host = data["host"]
-        else:
+        except ScanException:
             # Handle or log error
             return None
             

@@ -60,6 +60,18 @@ def create_application() -> FastAPI:
     )
 
     # Exception Handlers
+    from app.utils.error_handler import ScanException, format_error_response
+
+    @app.exception_handler(ScanException)
+    async def scan_exception_handler(request, exc: ScanException):
+        """
+        Handle certificate scanning errors with a 400 Bad Request status.
+        """
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=format_error_response(exc.message, exc.host),
+        )
+
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
         """

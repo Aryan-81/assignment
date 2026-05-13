@@ -22,26 +22,18 @@ router = APIRouter(prefix="/certificates", tags=["certificates"])
 @router.post("/check", response_model=HostWithCertificatesFullResponse, response_model_exclude_none=True)
 def check_certificate(request: CertificateRequest, db: Session = Depends(get_db)):
     """Scan URL for certificate or fetch from cache."""
-    try:
-        result = cert_svc.get_or_create_certificate(db, str(request.url))
-        if not request.include_sans:
-            return HostWithCertificatesResponse.model_validate(result)
-        return HostWithCertificatesFullResponse.model_validate(result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Scan failed: {str(e)}")
+    result = cert_svc.get_or_create_certificate(db, str(request.url))
+    if not request.include_sans:
+        return HostWithCertificatesResponse.model_validate(result)
+    return HostWithCertificatesFullResponse.model_validate(result)
 
 @router.post("/check_no_cache", response_model=HostWithCertificatesFullResponse, response_model_exclude_none=True)
 def check_certificate_no_cache(request: CertificateRequest, db: Session = Depends(get_db)):
     """Perform a fresh scan bypassing the cache."""
-    try:
-        result = cert_svc.get_certificate_no_cache(db, str(request.url))
-        if not request.include_sans:
-            return HostWithCertificatesResponse.model_validate(result)
-        return HostWithCertificatesFullResponse.model_validate(result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    result = cert_svc.get_certificate_no_cache(db, str(request.url))
+    if not request.include_sans:
+        return HostWithCertificatesResponse.model_validate(result)
+    return HostWithCertificatesFullResponse.model_validate(result)
 
 @router.get("/", response_model=list[HostWithCertificatesFullResponse])
 def get_all_domains(pagination: PaginationParams = Depends(), db: Session = Depends(get_db)):
