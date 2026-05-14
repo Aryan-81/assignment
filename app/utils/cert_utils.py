@@ -1,3 +1,4 @@
+import asyncio
 import socket
 import ssl
 import json
@@ -24,8 +25,8 @@ def cert_name_to_dict(name):
 
     return result
 
-def get_cert_info(hostname: str, port: int = 443):
-
+def _get_cert_info_sync(hostname: str, port: int = 443):
+    """Synchronous core for certificate fetching to be run in a thread."""
     # ── Build a context that can actually complete the handshake ──────────
     ctx = SSL.Context(SSL.TLS_CLIENT_METHOD)
     ctx.set_default_verify_paths()                      # load system CA bundle
@@ -95,7 +96,7 @@ def get_cert_info(hostname: str, port: int = 443):
             "days_left":     (na - now).days,
         })
 
-    result = {
+    return {
         "host": hostname,
         "port": port,
 
@@ -127,7 +128,9 @@ def get_cert_info(hostname: str, port: int = 443):
         },
     }
 
-    return(result)
+async def get_cert_info(hostname: str, port: int = 443):
+    """Asynchronously gets the certificate information from the given hostname and port."""
+    return await asyncio.to_thread(_get_cert_info_sync, hostname, port)
 
 def map_cert_data_to_models(cert_data: dict, cert: Certificate = None) -> Certificate:
     """Converts raw cert_data dictionary into a full ORM object graph."""

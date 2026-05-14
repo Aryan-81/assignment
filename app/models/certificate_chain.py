@@ -49,4 +49,5 @@ class CertificateChain(Base):
     certificate = relationship(
         "Certificate",
         back_populates="chain_entries",
+        lazy="selectin",
     )

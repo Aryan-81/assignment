@@ -48,4 +48,5 @@ class SecurityCheck(Base):
     certificate = relationship(
         "Certificate",
         back_populates="security_check",
+        lazy="selectin",
     )

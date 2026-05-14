@@ -41,6 +41,7 @@ class Host(Base):
         "CertificateScan",
         back_populates="host",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     # many-to-many (read only)
@@ -48,4 +49,5 @@ class Host(Base):
         "Certificate",
         secondary="certificate_scans",
         viewonly=True,
+        lazy="selectin",
     )

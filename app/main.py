@@ -25,12 +25,13 @@ async def lifespan(app: FastAPI):
         - Clean up resources (placeholder for future use)
     """
     # Startup logic
-    Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     
     yield
     
     # Shutdown logic
-    engine.dispose()
+    await engine.dispose()
 
 
 # APPLICATION FACTORY

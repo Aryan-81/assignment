@@ -56,6 +56,7 @@ class Certificate(Base):
         "CertificateScan",
         back_populates="certificate",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     # many-to-many
@@ -63,12 +64,14 @@ class Certificate(Base):
         "Host",
         secondary="certificate_scans",
         viewonly=True,
+        lazy="selectin",
     )
 
     sans = relationship(
         "CertificateSAN",
         back_populates="certificate",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     tls_detail = relationship(
@@ -76,12 +79,14 @@ class Certificate(Base):
         back_populates="certificate",
         uselist=False,
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     chain_entries = relationship(
         "CertificateChain",
         back_populates="certificate",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     security_check = relationship(
@@ -89,4 +94,5 @@ class Certificate(Base):
         back_populates="certificate",
         uselist=False,
         cascade="all, delete-orphan",
+        lazy="selectin",
     )

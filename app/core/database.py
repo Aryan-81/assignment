@@ -1,40 +1,42 @@
 """
 Database connection setup and session management using SQLAlchemy.
 """
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
 
 from app.core.config import settings
 
 
 DATABASE_URL = (
-    f"postgresql://{settings.POSTGRES_USER}:"
+    f"postgresql+asyncpg://{settings.POSTGRES_USER}:"
     f"{settings.POSTGRES_PASSWORD}@"
     f"{settings.POSTGRES_HOST}:"
     f"{settings.POSTGRES_PORT}/"
     f"{settings.POSTGRES_DB}"
 )
 
-engine = create_engine(
+engine = create_async_engine(
     DATABASE_URL,
     pool_pre_ping=True
 )
 
-SessionLocal = sessionmaker(
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
     autocommit=False,
     autoflush=False,
-    bind=engine
+    class_=AsyncSession,
+    expire_on_commit=False,
 )
 
 Base = declarative_base()
 
 
-def get_db():
+async def get_db():
     """
-    Dependency function to provide a database session to API endpoints.
+    Dependency function to provide an asynchronous database session.
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()

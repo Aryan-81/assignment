@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from app.core.config import CACHE_TTL_HOURS
-from sqlalchemy.orm import Session
-from sqlalchemy import exists
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, exists
 
 from urllib.parse import urlparse
 from app.models import (
@@ -9,7 +9,6 @@ from app.models import (
     Certificate,
     CertificateScan,
 )
-
 
 
 def is_cache_valid(last_scan_at):
@@ -68,7 +67,7 @@ def get_related_objects(
     return items
 
 
-def cleanup_orphan_certificates(db: Session, certificate_ids: list[int]) -> None:
+async def cleanup_orphan_certificates(db: AsyncSession, certificate_ids: list[int]) -> None:
     """
     Delete certificates that are no longer referenced by any scan.
     
@@ -77,23 +76,16 @@ def cleanup_orphan_certificates(db: Session, certificate_ids: list[int]) -> None
         certificate_ids: List of certificate IDs to check
     """
     for cert_id in certificate_ids:
-        still_used = (
-            db.query(
-                exists().where(
-                    CertificateScan.certificate_id == cert_id
-                )
-            )
-            .scalar()
-        )
+        stmt = select(exists().where(CertificateScan.certificate_id == cert_id))
+        result = await db.execute(stmt)
+        still_used = result.scalar()
 
         if not still_used:
-            cert = (
-                db.query(Certificate)
-                .filter(Certificate.id == cert_id)
-                .first()
-            )
+            stmt = select(Certificate).filter(Certificate.id == cert_id)
+            result = await db.execute(stmt)
+            cert = result.scalars().first()
 
             if cert:
-                db.delete(cert)
+                await db.delete(cert)
     
-    db.commit()
+    await db.commit()

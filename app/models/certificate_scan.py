@@ -45,11 +45,13 @@ class CertificateScan(Base):
     host = relationship(
         "Host",
         back_populates="scans",
+        lazy="selectin",
     )
 
     certificate = relationship(
         "Certificate",
         back_populates="scans",
+        lazy="selectin",
     )
 
     # prevent duplicate scan rows

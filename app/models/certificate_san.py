@@ -27,4 +27,5 @@ class CertificateSAN(Base):
     certificate = relationship(
         "Certificate",
         back_populates="sans",
+        lazy="selectin",
     )

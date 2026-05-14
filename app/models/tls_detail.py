@@ -31,4 +31,5 @@ class TLSDetail(Base):
     certificate = relationship(
         "Certificate",
         back_populates="tls_detail",
+        lazy="selectin",
     )
